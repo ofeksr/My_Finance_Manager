@@ -1,0 +1,61 @@
+{
+    "stocks": {
+        "AAPL": {
+            "Lot 1": {
+                "Date": "22.10.2019",
+                "Amount": 15,
+                "Buy Price": 250.6,
+                "Currency": "USD",
+                "Market Value USD": 3607.649917602539,
+                "Market Value ILS": 12748.989,
+                "Profit USD": -151.35,
+                "Profit ILS": -534.852,
+                "Profit %": -4.026
+            }
+        },
+        "VTI": {
+            "Lot 1": {
+                "Date": "22.10.2019",
+                "Amount": 57,
+                "Buy Price": 152.57,
+                "Currency": "USD",
+                "Market Value USD": 8696.490417480469,
+                "Market Value ILS": 30732.321,
+                "Profit USD": 0.0,
+                "Profit ILS": 0.0,
+                "Profit %": 0.0
+            }
+        }
+    },
+    "symbol buy count": {
+        "AAPL": 1,
+        "VTI": 1
+    },
+    "bank_cf": 12549.0,
+    "trader_cf": 5348.0,
+    "user_email": "example@email.com",
+    "update_dates": {
+        "stocks": "22.10.2019",
+        "bank_trader": "22.10.2019"
+    },
+    "history_data": {
+        "22.10.2019": {
+            "market_value": {
+                "portfolio": [
+                    43481.31,
+                    12304.14
+                ],
+                "total_assets": [
+                    61378.31,
+                    17368.551
+                ]
+            },
+            "profit": [
+                -2.013,
+                -534.852
+            ],
+            "bank_cf": 12549.0,
+            "trader_cf": 5348.0
+        }
+    }
+}
