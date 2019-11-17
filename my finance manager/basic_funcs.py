@@ -16,9 +16,9 @@ from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from yahoo_fin import stock_info
 
-import mfm_exceptions
+import exceptions
 
-LOG = mfm_exceptions.create_logger()
+LOG = exceptions.create_logger()
 
 
 class BasicFunctions:
@@ -46,7 +46,8 @@ class BasicFunctions:
             self.update_dates = data['update_dates']
             try:
                 self.history_data = data['history_data']
-            except:
+            except Exception:
+                self.LOG.exception('Error while trying to import history data')
                 self.history_data = {}
 
         else:

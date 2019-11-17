@@ -1,15 +1,15 @@
 import os
-from datetime import datetime
+from datetime import datetime, timedelta
 from glob import glob
 import shutil
 
 import keyring
 
 from database import MyFinanceManager
-from google_agents import GoogleKeepAgent
-from meitav_dash_scraper import get_trader_info
-from mfm_exceptions import log_error_to_desktop
-from otsar_hahayal_scraper import get_bank_info
+from tools.google_agents import GoogleKeepAgent
+from scrapers.meitav_dash_scraper import get_trader_info
+from exceptions import log_error_to_desktop
+from scrapers.otsar_hahayal_scraper import get_bank_info
 
 p = None
 
@@ -18,12 +18,9 @@ def run_script():
     global p
     try:
 
-        if datetime.today().weekday() == 5:
-            print('Today is Saturday, no need to update portfolio.')
-            exit()
-
         list_of_files = glob(MyFinanceManager.DEFAULT_SAVE_PATH + '/*.json')
 
+        # find latest database.
         if len(list_of_files) != 0:
             latest_file = sorted(
                 list_of_files,
@@ -32,12 +29,21 @@ def run_script():
 
             p = MyFinanceManager.import_database(filename=latest_file, gui_mode=True)
 
+            # check if its saturday and also if there was an update in friday - so don't need to update.
+            weekday = datetime.today().weekday()
+            last_update_date = datetime.strptime(p.update_dates['stocks'].split(' ')[0], "%d/%m/%Y")
+            current_date = datetime.strptime(p.NOW.split(' ')[0], "%d/%m/%Y")
+            if weekday == 5 and (last_update_date == current_date + timedelta(days=-1)):
+                p.LOG.info('Today is Saturday, no need to update portfolio.')
+                exit()
+
             p.update_stocks_price()
 
             bank_cf = get_bank_info(only_balance=True)
 
             trader_cf, p.days_left = get_trader_info(cash_days=True)
 
+            # in case that script couldn't web scrap for bank and \ or trader data.
             if bank_cf is None and trader_cf is not None:
                 p.update_bank_trader_cf(u_trader_cf=trader_cf)
 
@@ -47,6 +53,7 @@ def run_script():
             else:
                 p.update_bank_trader_cf(u_bank_cf=bank_cf, u_trader_cf=trader_cf)
 
+            # check if need to alert (add to google keep `to do list`) to change trader password.
             if trader_cf is not None and p.days_left is not None:
                 if trader_cf < 50 or p.days_left < 8:
                     email_address = os.environ.get('my_email')
@@ -81,6 +88,7 @@ def run_script():
             shutil.copy(f'database/{p.TODAY}-Portfolio-Data.json',
                         backup_path)
 
+            # if its sunday, send email report.
             if datetime.today().weekday() == 6:
                 p.send_fancy_email()
 

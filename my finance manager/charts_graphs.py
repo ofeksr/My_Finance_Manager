@@ -160,10 +160,7 @@ class ChartsGraphs(PrintFuncs):
             return df
 
     def graph(self, market_value: bool = False, profit_percentage: bool = False, profit_numbers: bool = False,
-              save_only: bool = False, date: str = None):
-
-        if date is None:  # for editing graphs date
-            date = self.TODAY
+              save_only: bool = False):
 
         c_map = cm.get_cmap('viridis')
 
@@ -187,10 +184,10 @@ class ChartsGraphs(PrintFuncs):
                     plt.text(v, i, str(f'{v:,.2f}'))
 
                 if save_only:
-                    plt.savefig(self.graphs_save_path + f'\\{date}-Market-Value.png')
+                    plt.savefig(self.graphs_save_path + f'{self.TODAY}-Market-Value.png')
                     plt.close('all')
-                    self.LOG.info('graph market value saved')
-                    return self.graphs_save_path + f'\\{date}-Market-Value.png'
+                    self.LOG.info('Graph market value saved')
+                    return self.graphs_save_path + f'{self.TODAY}-Market-Value.png'
 
                 else:
                     plt.close('all')
@@ -216,10 +213,10 @@ class ChartsGraphs(PrintFuncs):
                     plt.text(v, i, str(round(v, 3)))
 
                 if save_only:
-                    plt.savefig(self.graphs_save_path + f'\\{date}-Profit-Prec.png')
+                    plt.savefig(self.graphs_save_path + f'{self.TODAY}-Profit-Prec.png')
                     plt.close('all')
-                    self.LOG.info('graph profit percentage saved')
-                    return self.graphs_save_path + f'\\{date}-Profit-Prec.png'
+                    self.LOG.info('Graph profit percentage saved')
+                    return self.graphs_save_path + f'{self.TODAY}-Profit-Prec.png'
 
                 else:
                     plt.close('all')
@@ -245,10 +242,10 @@ class ChartsGraphs(PrintFuncs):
                     plt.text(v, i, str(f'{v:,.2f}'))
 
                 if save_only:
-                    plt.savefig(self.graphs_save_path + f'\\{date}-Profit-Nums.png')
+                    plt.savefig(self.graphs_save_path + f'{self.TODAY}-Profit-Nums.png')
                     plt.close('all')
-                    self.LOG.info('graph profit numbers saved')
-                    return self.graphs_save_path + f'\\{date}-Profit-Nums.png'
+                    self.LOG.info('Graph profit numbers saved')
+                    return self.graphs_save_path + f'{self.TODAY}-Profit-Nums.png'
 
                 else:
                     plt.close('all')

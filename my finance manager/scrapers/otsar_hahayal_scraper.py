@@ -16,16 +16,14 @@ from selenium.webdriver.support import expected_conditions as ec
 from selenium.webdriver.support.ui import WebDriverWait
 
 
-def create_logger():
-    if not os.path.isdir('logs'):
-        os.mkdir('logs')
-    LOGGER = logging.getLogger('Bank.Scrapper.Logger')
-    handler = logging.StreamHandler(sys.stdout)
-    LOGGER.addHandler(handler)
-    logging.basicConfig(filename='logs/Bank_Scrapper_Logger.log', filemode='w',
-                        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', datefmt='%d/%m/%y %H:%M:%S',
-                        level=logging.INFO)
-    return LOGGER
+if not os.path.isdir('logs'):
+    os.mkdir('logs')
+LOG = logging.getLogger('Bank.Scraper.Logger')
+handler = logging.StreamHandler(sys.stdout)
+LOG.addHandler(handler)
+logging.basicConfig(filename='logs/Bank_Scraper_Logger.log', filemode='w',
+                    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', datefmt='%d/%m/%y %H:%M:%S',
+                    level=logging.INFO)
 
 
 charge = 0
@@ -90,7 +88,7 @@ def get_bank_info(only_balance: bool = False) -> dict or None:
         except IndexError:
             charge = 0
         finally:
-            balance = str(float(total) + float(charge))
+            balance = float(total) + float(charge)
             driver.quit()
             LOG.debug('Web driver closed')
 
@@ -103,11 +101,11 @@ def get_bank_info(only_balance: bool = False) -> dict or None:
                 'Account Number': account_number,
                 'Date': date,
                 'Time': time,
-                'Current Amount': current,
-                'Foreign Currency': currency,
-                'Total Current Account': total,
-                'Charged Amount': charge,
-                'Total Balance': balance,
+                'Current Amount': f'{float(current):,}',
+                'Foreign Currency': f'{float(currency):,}',
+                'Total Current Account': f'{float(total):,}',
+                'Charged Amount': f'{float(charge):,}',
+                'Total Balance': f'{float(balance):,}',
             }
 
     except:
@@ -116,6 +114,5 @@ def get_bank_info(only_balance: bool = False) -> dict or None:
 
 
 if __name__ == '__main__':
-    LOG = create_logger()
     # using json.dumps for pretty print.
     print(json.dumps(get_bank_info(), indent=4))

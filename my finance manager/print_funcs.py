@@ -1,12 +1,13 @@
 import numpy as np
 
-from __init__ import BasicFunctions
+from basic_funcs import BasicFunctions
 
 
 class PrintFuncs(BasicFunctions):
     def show_stocks(self, symbol: str = None) -> str:
         if symbol is None:
             output = []
+
             for symbol, lot in self.stocks.items():
                 for lot_i, details in lot.items():
                     output.append(f'\n\nHolding Symbol: {symbol}\n')
@@ -23,6 +24,7 @@ class PrintFuncs(BasicFunctions):
         else:
             symbol = symbol.upper()
             output = [f'Holding Symbol: {symbol}\n']
+
             for lot_i, details in self.stocks[symbol].items():
                 for key, val in details.items():
                     if key in ['Market Value USD', 'Market Value ILS', 'Profit ILS', 'Profit USD', 'Profit %']:

@@ -59,6 +59,10 @@ class Test(unittest.TestCase):
                               tuple,
                               msg='Failed to get total profit')
 
+    def test_graph_profit_percentage(self):
+        self.assertIsNotNone(self.mfm.graph(profit_percentage=True, save_only=True),
+                             msg='Failed to graph profit percentage')
+
     def test_schedule(self):
         sys.path.append('C:/Users/Ofek/PycharmProjects/My Finance Manager/my finance manager')
         from mfm_schedule import run_script

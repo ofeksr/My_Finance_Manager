@@ -8,10 +8,10 @@ from tkinter import ttk, filedialog, messagebox, simpledialog
 from PIL import ImageTk, Image
 from tkinterhtml import HtmlFrame
 
-from calculator import Calculator
+from tools.calculator import Calculator
 from database import MyFinanceManager
-from otsar_hahayal_scraper import get_bank_info
-from meitav_dash_scraper import get_trader_info
+from scrapers.otsar_hahayal_scraper import get_bank_info
+from scrapers.meitav_dash_scraper import get_trader_info
 
 LOG = logging.getLogger('MFM.GUI.Logger')
 
@@ -285,7 +285,7 @@ class Application(MyFinanceManager, tk.Frame):
                 self.bottom_bar(Application.portfolio.update_dates)
                 self.state_normal()
                 Application.save_flag = True
-                root.title('{} - MyFinanceManager'.format(latest_file.split('/')[-1]))
+                root.title('{} - MyFinanceManager'.format(latest_file.split('\\')[-1]))
                 self.progress_lbl_mode(process=False)
 
         else:
@@ -299,7 +299,7 @@ class Application(MyFinanceManager, tk.Frame):
                 self.bottom_bar(Application.portfolio.update_dates)
                 self.assets_info.configure(text=Application.portfolio.df_assets(to_email=True, normal_mode=True))
                 Application.save_flag = True
-                root.title('{} - MyFinanceManager'.format(file_path.split('/')[-1]))
+                root.title('{} - MyFinanceManager'.format(file_path.split('\\')[-1]))
                 self.progress_lbl_mode(process=False)
 
             else:

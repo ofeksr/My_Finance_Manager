@@ -15,15 +15,12 @@ from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support import expected_conditions as ec
 from selenium.webdriver.support.ui import WebDriverWait
 
-
-def create_logger():
-    LOGGER = logging.getLogger('Meitav.Dash.Scrapper.Logger')
-    handler = logging.StreamHandler(sys.stdout)
-    LOGGER.addHandler(handler)
-    logging.basicConfig(filename='logs/Meitav_Dash_Scrapper_Logger.log', filemode='w',
-                        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', datefmt='%d/%m/%y %H:%M:%S',
-                        level=logging.INFO)
-    return LOGGER
+LOG = logging.getLogger('Meitav.Dash.Scraper.Logger')
+handler = logging.StreamHandler(sys.stdout)
+LOG.addHandler(handler)
+logging.basicConfig(filename='logs/Meitav_Dash_Scraper_Logger.log', filemode='w',
+                    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', datefmt='%d/%m/%y %H:%M:%S',
+                    level=logging.INFO)
 
 
 def get_trader_info(cash_days: bool = False):
@@ -68,10 +65,10 @@ def get_trader_info(cash_days: bool = False):
         account_number = driver.find_elements_by_class_name('ng-binding')[26].text
 
         balance, gain_and_loss, change_percentage, cash, income, \
-            profit, profit_percentage, collateral = driver.find_elements_by_class_name('ng-binding.ng-scope')[:8]
+        profit, profit_percentage, collateral = driver.find_elements_by_class_name('ng-binding.ng-scope')[:8]
 
         if cash_days:
-            return float(cash.text), days_left
+            return [float(cash.text), days_left]
 
         info = {
             'Account Number': account_number,
@@ -94,10 +91,9 @@ def get_trader_info(cash_days: bool = False):
 
     except:
         LOG.exception(f'Failed to get info from Meitav Dash website')
-        return None
+        return [None, None]
 
 
 if __name__ == '__main__':
-    LOG = create_logger()
     # using json.dumps for pretty print.
     print(json.dumps(get_trader_info(), indent=4))
