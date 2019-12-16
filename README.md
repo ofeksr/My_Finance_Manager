@@ -4,7 +4,7 @@
   <img src="https://i.ibb.co/tzPkVrw/Capture.png">
 </p>
 
-#### My Finance Manager (MFM) created to manage all data at one place, from bank account and investment house portfolio.
+#### My Finance Manager (MFM) - to manage all your money in one place, from bank account and investment house.
 - Update stocks prices from yahoo finance or from Tel Aviv stock Exchange-TASE (with BizPortal API or using requests_html).
 - Get statistics about portfolio history changes, including profit.
 - View graphs and receive email report with weekly summery of your portfolio.
