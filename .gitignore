@@ -1,0 +1,15 @@
+/venv
+/data/old
+/my_finance_manager/database
+/my_finance_manager/logs
+/my_finance_manager/media/graphs
+/.idea
+/__pycache__
+/my_finance_manager/__pycache__
+/my_finance_manager/tools/credentials.json
+/my_finance_manager/run gui.bat
+/my_finance_manager/mfm_schedule.bat
+/tests/database
+/tests/logs
+/tests/media/graphs
+my_finance_manager/scrapers/__pycache__/
