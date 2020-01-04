@@ -18,7 +18,7 @@
 - Tkinter
 
 ### Version Changes:
-- v1.0 first release
+- v1.0 first release - JSON db
 - v1.1 MongoDB version + ThreadPoolExecutor
 
 ### Notes:
