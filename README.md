@@ -19,9 +19,9 @@
 2. Supported stocks: Yahoo Finance & TASE.
 
 ## Experience Installation:
-1. install requirements.txt
+1. install requirements.txt and set up MongoDB server on your machine.
 2. Run gui.py
-3. File -> Import Portfolio -> use Example_data.json 
+3. Edit -> Add Stocks
 4. Press Ctrl+U or Edit -> Update Stocks Prices
 5. Press Ctrl+P or Graphs -> Show Profit
 6. Tools -> Change Email Address and then Ctrl+E or Tools -> Send Email Report -> Fancy Style
