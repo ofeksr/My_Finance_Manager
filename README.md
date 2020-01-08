@@ -10,8 +10,15 @@
 - View graphs and receive email report with weekly summery of your portfolio.
 - Use built in Currency Converter.
 
+### Dependencies:
+- MongoDB database
+- Selenium Chrome Web driver
+- Matplotlib
+- Pandas
+- Tkinter
+
 ### Version Changes:
-- v1.0 first release
+- v1.0 first release - JSON db
 - v1.1 MongoDB version + ThreadPoolExecutor
 
 ### Notes:
