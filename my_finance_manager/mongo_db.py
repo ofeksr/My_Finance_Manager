@@ -11,8 +11,8 @@ LOG.addHandler(handler)
 
 
 class MyMongoDB:
-    __client = MongoClient()
-    db = __client['mfm']
+    _client = MongoClient()
+    db = _client['mfm']
     user_name = os.getlogin()
 
     def __init__(self):
@@ -28,10 +28,35 @@ class MyMongoDB:
         else:
             self.user_name = self.user_info.collection.find_one({}, {'user_name': 1})['user_name']
 
-        # close connection on force exit
+        # close connection on exit
         atexit.register(self.close_connection)
 
         LOG.info('MongoDB object created successfully')
+
+    def _setup_test_collections(self):
+        self.stocks.collection.aggregate([
+            {'$merge': {'into': {'db': 'mfm_test', 'coll': 'stocks'}}}
+        ])
+        self.user_info.collection.aggregate([
+            {'$merge': {'into': {'db': 'mfm_test', 'coll': 'user_info'}}}
+        ])
+        self.history_data.collection.aggregate([
+            {'$merge': {'into': {'db': 'mfm_test', 'coll': 'history_data'}}}
+        ])
+        self.last_modified.collection.aggregate([
+            {'$merge': {'into': {'db': 'mfm_test', 'coll': 'last_modified'}}}
+        ])
+        self.db = self._client['mfm_test']
+        _Stocks.collection = self.db['stocks']
+        _UserInfo().collection = self.db['user_info']
+        _HistoryData().collection = self.db['history_data']
+        _LastModified().collection = self.db['last_modified']
+
+    @classmethod
+    def _drop_db(cls, db_name: str):
+        cls._client.drop_database(db_name)
+        LOG.info(f'Database {db_name} dropped')
+        return True
 
     def _check_collections(self):
         """checking if collections exists and in correct length"""
@@ -39,7 +64,7 @@ class MyMongoDB:
         return True if collections_count == 4 else False
 
     def close_connection(self):
-        self.__client.close()
+        self._client.close()
         LOG.info('MongoDB connection closed')
         return True
 
@@ -83,11 +108,11 @@ class _Stocks:
     def update_stock_lot(self, symbol: str, lot_num: int, market_val_ils: float, market_val_usd: float,
                          profit_usd: float, profit_ils: float, profit_percentage: float):
         self.collection.update_one({'symbol': symbol, 'Lot_Num': lot_num}, {'$set': {
-            'Market Value USD': market_val_usd,
-            'Market Value ILS': market_val_ils,
-            'Profit %': profit_percentage,
-            'Profit ILS': profit_ils,
-            'Profit USD': profit_usd,
+            'Market_Value_USD': market_val_usd,
+            'Market_Value_ILS': market_val_ils,
+            'Profit_%': profit_percentage,
+            'Profit_ILS': profit_ils,
+            'Profit_USD': profit_usd,
         }})
         return True
 
@@ -106,11 +131,14 @@ class _Stocks:
                 {'$project': {'symbol': '$_id', '_id': 0, 'count': 1}}
             ]))
             return [s for s in lots_count]
+
         elif symbol:
             lots_count = list(self.collection.aggregate([
                 {'$match': {'symbol': symbol}},
                 {'$group': {'_id': '$symbol', 'count': {'$sum': 1}}},
             ]))
+            if len(lots_count) == 0:
+                return 0
             return lots_count[0]['count']
 
     def remove_stock(self, symbol: str, lot_num: int = None):
@@ -201,7 +229,7 @@ class _HistoryData:
                           'Total_Market_Value_USD': '$Market_Value_USD.sum', 'trader_cf': 1, 'bank_cf': 1}},
         ]))[0]
 
-        portfolio_market_value_ils = {
+        portfolio_market_value = {
             'ILS': d["Total_Market_Value_ILS"][0],
             'USD': d["Total_Market_Value_USD"][0]
         }
@@ -216,7 +244,7 @@ class _HistoryData:
 
         self.collection.update_one({'date': datetime.datetime.strptime(TODAY, '%d-%m-%Y')},
                                    {'$set': {'trader_cf': d["trader_cf"], 'bank_cf': d["bank_cf"],
-                                             'market_value': {'portfolio': portfolio_market_value_ils,
+                                             'market_value': {'portfolio': portfolio_market_value,
                                                               'total_assets': total_assets},
                                              'profit': profit}},
                                    upsert=True)
@@ -236,8 +264,3 @@ class _LastModified:
     def update_field(self, field_name: str):
         self.collection.update_one({'type': field_name}, {'$set': {'last_modified': datetime.datetime.now()}})
         return True
-
-
-if __name__ == '__main__':
-    m = MyMongoDB()
-    m.close_connection()

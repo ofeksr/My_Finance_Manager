@@ -24,7 +24,7 @@ from selenium.webdriver.chrome.options import Options
 from tabulate import tabulate
 
 import mongo_db
-from database.email_config import sender_password, sender_email
+from config.config import sender_password, sender_email
 from exceptions import create_logger, os, datetime
 
 
@@ -117,7 +117,7 @@ class MyFinanceManager:
         else:
             lot_num = 1
 
-        d = {{'symbol': symbol}}
+        d = {'symbol': symbol}
         if currency == 'USD':
             start_market_val = buy_price * amount
             current_market_val = self.get_stock_price(symbol) * amount
@@ -131,13 +131,13 @@ class MyFinanceManager:
                 'Lot_Num': lot_num,
                 'Date': date,
                 'Amount': amount,
-                'Buy Price': buy_price,
+                'Buy_Price': buy_price,
                 'Currency': currency,
-                'Market Value USD': current_market_val,
-                'Market Value ILS': converted_c_market_val,
-                'Profit USD': profit_usd,
-                'Profit ILS': profit_ils,
-                'Profit %': profit_percentage,
+                'Market_Value USD': current_market_val,
+                'Market_Value ILS': converted_c_market_val,
+                'Profit_USD': profit_usd,
+                'Profit_ILS': profit_ils,
+                'Profit_%': profit_percentage,
             })
 
         elif currency == 'ILS':
@@ -153,14 +153,14 @@ class MyFinanceManager:
                 'Lot_Num': lot_num,
                 'Date': date,
                 'Amount': amount,
-                'Buy Price': buy_price,
+                'Buy_Price': buy_price,
                 'Currency': currency,
-                'Market Value USD': converted_c_market_val,
-                'Market Value ILS': current_market_val,
-                'Profit USD': profit_usd,
-                'Profit ILS': profit_ils,
+                'Market_Value_USD': converted_c_market_val,
+                'Market_Value_ILS': current_market_val,
+                'Profit_USD': profit_usd,
+                'Profit_ILS': profit_ils,
                 'TASE_INDEX': tase_index,
-                'Profit %': profit_percentage,
+                'Profit_%': profit_percentage,
             })
 
         self.db.stocks.insert_stock(d)
@@ -201,19 +201,19 @@ class MyFinanceManager:
                 profit_ils = np.round(self.CR.convert('USD', 'ILS', profit_usd), 3)
                 profit_percentage = np.round((((current_market_val / start_market_val) * 100) - 100), 3)
 
-                self.db.stocks.update_stock_lot(symbol, lot_num, current_market_val, converted_c_market_val,
+                self.db.stocks.update_stock_lot(symbol, lot_num, converted_c_market_val, current_market_val,
                                                 profit_usd, profit_ils, profit_percentage)
 
     def update_stocks_price(self, symbol: str = None) -> bool:
         if symbol:
             self._loop_update_stock(symbol, self.db.stocks.get_stock_lots_count(symbol))
+            self.LOG.info(f'{symbol} price updated')
         else:
             for d in self.db.stocks.get_stock_lots_count(per_stock=True):
                 self._loop_update_stock(d['symbol'], d['count'])
+                self.LOG.info('All stocks prices updated')
 
         self.db.last_modified.update_field(field_name='stocks')
-
-        self.LOG.info('All stocks prices updated')
         return True
 
     def update_bank_trader_cf(self, u_bank_cf: float = None, u_trader_cf: float = None) -> bool:
@@ -250,7 +250,7 @@ class MyFinanceManager:
             current_amount = self.db.stocks.get_field_from_stock(symbol, lot_num, 'Amount')
 
             if current_amount > sell_amount:
-                self.db.stocks.update_stock_amount(symbol, sell_amount)
+                self.db.stocks.update_stock_amount(symbol, lot_num, sell_amount)
                 self.LOG.info(f'{sell_amount} shares of {symbol} removed from lot {lot_num}')
                 return self.update_stocks_price(symbol)
 

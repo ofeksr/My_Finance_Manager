@@ -1,13 +1,12 @@
 import concurrent.futures
 import time
 
-import keyring
-
 from exceptions import log_error_to_desktop, datetime, os
 from mfm import MyFinanceManager
 from scrapers.meitav_dash_scraper import get_trader_info
 from scrapers.otsar_hahayal_scraper import get_bank_info
 from tools.google_agents import GoogleKeepAgent
+from config.config import email_address, keep_password, token, to_do_list_id
 
 
 def run_script():
@@ -46,14 +45,8 @@ def run_script():
         # check if need to alert (add to google keep `to do list`) to change trader password.
         # if trader_cf is not None and p.days_left is not None:
         if (trader_cf and p.days_left) and (trader_cf < 50 or p.days_left < 8):
-            email_address = os.environ.get('my_email')
-            keep_password = keyring.get_password('keep-agent', os.getlogin())
-            keep_username = email_address.split('@')[0]
-            token = keyring.get_password('google-keep-token', keep_username)
-
             keep = GoogleKeepAgent()
             keep.login(email_address=email_address, password=keep_password, token=token)
-            to_do_list_id = keyring.get_password('keep-agent', 'todo-list-id')
             events_to_add = []
 
             if trader_cf < 50:

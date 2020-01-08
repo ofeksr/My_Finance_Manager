@@ -36,7 +36,7 @@ class Application(MyFinanceManager, tk.Frame):
 
         self.all_in_one_btn, self.progress_lbl = self.create_aio_btn()
 
-        self.progress_lbl_mode(process=True)
+        self.progress_lbl_mode(process=True)  # indicating in process mode
 
         self.active_window(window=root, is_root=True)
 
@@ -53,7 +53,7 @@ class Application(MyFinanceManager, tk.Frame):
 
         self.root_binds()
 
-        self.progress_lbl_mode()
+        self.progress_lbl_mode()  # indicating idle mode
 
         self.LOG.info('MFM GUI object created successfully')
 

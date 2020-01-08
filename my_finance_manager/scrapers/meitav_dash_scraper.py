@@ -58,6 +58,7 @@ def get_trader_info(cash_days: bool = False):
             'highlighted-text.ng-binding.ng-scope').text)
         LOG.info(f'{days_left} days left for changing trader login password')
 
+        WebDriverWait(driver, 5).until(ec.presence_of_element_located((By.CLASS_NAME, 'btn.btn-primary')))
         element = driver.find_element_by_class_name('btn.btn-primary')
         driver.execute_script("arguments[0].click();", element)
         WebDriverWait(driver, 10).until(ec.presence_of_element_located((By.CLASS_NAME, 'online-holdings-summery')))
