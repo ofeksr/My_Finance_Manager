@@ -13,3 +13,4 @@
 /tests/logs
 /tests/media/graphs
 my_finance_manager/scrapers/__pycache__/
+/my_finance_manager/config/

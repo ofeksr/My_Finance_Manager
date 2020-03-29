@@ -132,7 +132,9 @@ class Application(MyFinanceManager, tk.Frame):
             [
                 self.stocks_update_click(),
                 self.bank_trader_click(),
-                self.profit_click()
+                self.profit_click(),
+                Application.portfolio.update_history_data()
+
             ]
         )
 
@@ -150,6 +152,7 @@ class Application(MyFinanceManager, tk.Frame):
         root.bind('<Control-b>', lambda event: self.bank_trader_click())
         root.bind('<Control-p>', lambda event: self.profit_click())
         root.bind('<Control-h>', lambda event: self.stats_click())
+        root.bind('<Control-s>', lambda event: self.view_stocks_click())
 
     def active_window(self, window, is_root: bool = False):
         """setting windows as active windows when opened"""
@@ -253,8 +256,11 @@ class Application(MyFinanceManager, tk.Frame):
         self.LOG.debug('Clicked on update bank trader')
         self.progress_lbl_mode(process=True)
 
-        bank_cf = get_bank_info(only_balance=True)
-        trader_cf, self.days_left = get_trader_info(cash_days=True)
+        bank_cf, bank_usd_val = get_bank_info(mfm_output=True)
+        Application.portfolio.update_bank_trader_foreign_currency('USD', u_bank_usd_val=bank_usd_val)
+        trader_cf, self.days_left, trader_usd_val = get_trader_info(mfm_output=True)
+        Application.portfolio.update_bank_trader_foreign_currency('USD', u_trader_usd_val=trader_usd_val)
+
         Application.portfolio.update_bank_trader_cf(u_bank_cf=bank_cf,
                                                     u_trader_cf=trader_cf)
         Application.save_flag = True
@@ -414,7 +420,7 @@ class Application(MyFinanceManager, tk.Frame):
     def view_menu(self):
         self.LOG.debug('Creating view menu')
         view = tk.Menu(self.menu_bar, tearoff=0)
-        view.add_command(label='Stocks In Portfolio', command=self.view_stocks_click)
+        view.add_command(label='Stocks In Portfolio', command=self.view_stocks_click, accelerator='Ctrl+S')
         view.add_command(label='Portfolio History Stats', command=self.stats_click, accelerator='Ctrl+H')
         self.menu_bar.add_cascade(label='View', menu=view, state='disabled')
         return view
@@ -442,7 +448,7 @@ class Application(MyFinanceManager, tk.Frame):
         try:
             html = Application.portfolio.df_history(tabulate_output=True)
 
-            top = self.create_top_level(title='Portfolio History Stats', geometry='620x400')
+            top = self.create_top_level(title='Portfolio History Stats', geometry='650x400')
 
             hf = HtmlFrame(top)
             hf.pack()

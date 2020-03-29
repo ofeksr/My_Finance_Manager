@@ -19,6 +19,7 @@ class MyMongoDB:
         LOG.debug('initializing MongoDB object')
 
         self.stocks = _Stocks()
+        self.foreign_currencies = _ForeignCurrencies()
         self.user_info = _UserInfo()
         self.history_data = _HistoryData()
         self.last_modified = _LastModified()
@@ -37,6 +38,9 @@ class MyMongoDB:
         self.stocks.collection.aggregate([
             {'$merge': {'into': {'db': 'mfm_test', 'coll': 'stocks'}}}
         ])
+        self.foreign_currencies.collection.aggregate([
+            {'$merge': {'into': {'db': 'mfm_test', 'coll': 'foreign_currencies'}}}
+        ])
         self.user_info.collection.aggregate([
             {'$merge': {'into': {'db': 'mfm_test', 'coll': 'user_info'}}}
         ])
@@ -48,6 +52,7 @@ class MyMongoDB:
         ])
         self.db = self._client['mfm_test']
         _Stocks.collection = self.db['stocks']
+        _ForeignCurrencies.collection = self.db['foreign_currencies']
         _UserInfo().collection = self.db['user_info']
         _HistoryData().collection = self.db['history_data']
         _LastModified().collection = self.db['last_modified']
@@ -80,8 +85,8 @@ class _Stocks:
 
     def fetch_data_for_df(self):
         data = list(self.collection.aggregate([
-            {'$project': {'_id': 0, 'Symbol': '$symbol', 'Market_Value_ILS': 1, 'Lot_Num': 1, 'Date': 1, 'Amount': 1,
-                          'Buy_Price': 1, 'Currency': 1, 'Profit_%': 1, 'Profit_ILS': 1}},
+            {'$project': {'_id': 0, 'Symbol': '$symbol', 'Market_Value_ILS': 1, 'Lot': '$Lot_Num', 'Date': 1,
+                          'Amount': 1, 'Buy_Price': 1, 'Currency': 1, 'Profit_%': 1, 'Profit_ILS': 1}},
             {'$sort': {'Market_Value_ILS': -1}}
         ]))
         return data
@@ -149,6 +154,51 @@ class _Stocks:
         return True
 
 
+class _ForeignCurrencies:
+    collection = MyMongoDB.db['foreign_currencies']
+
+    def fetch_data_for_df(self):
+        data = list(self.collection.aggregate([
+            {'$project': {'_id': 0, 'Symbol': '$symbol', 'Market_Value_ILS': 1, 'Lot': '$Lot_Type', 'Currency': 'ILS'}},
+            {'$sort': {'Market_Value_ILS': -1}}
+        ]))
+        return data
+
+    def get_foreign_currencies_names(self):
+        return self.collection.distinct('symbol')
+
+    def sum_foreign_currency_field(self, field_name):
+        field_sum = list(self.collection.aggregate([
+            {'$group': {'_id': None, 'total': {'$sum': f'${field_name}'}}},
+            {'$project': {'_id': 0}}
+        ]
+        ))[0]
+        return field_sum['total']
+
+    def insert_lot_to_stock(self, symbol: str, d: dict):
+        self.collection.update_one({'symbol': symbol}, {'$set': d})
+        return True
+
+    def insert_stock(self, d):
+        self.collection.insert_one(d)
+        return True
+
+    def remove_stock(self, symbol: str, lot_type: str = None):
+        if lot_type:
+            self.collection.delete_one({'symbol': symbol, 'Lot_Type': lot_type})
+        else:
+            self.collection.delete_one({'symbol': symbol})
+        return True
+
+    def update_foreign_currency(self, symbol: str, lot_type: str, market_val_ils: float, market_val_usd: float):
+        self.collection.update_one({'symbol': symbol, 'Lot_Type': lot_type}, {'$set': {
+            'Market_Value_USD': market_val_usd,
+            'Market_Value_ILS': market_val_ils,
+        }},
+                                   upsert=True)
+        return True
+
+
 class _UserInfo:
     collection = MyMongoDB.db['user_info']
 
@@ -166,17 +216,19 @@ class _HistoryData:
 
     def get_latest_trader_cf(self):
         cf = list(self.collection.aggregate([
+            {'$match': {'trader_cf': {'$exists': True}}},
+            {'$project': {'_id': 0, 'trader_cf': 1, 'date': 1}},
             {'$sort': {'date': -1}},
             {'$limit': 1},
-            {'$project': {'_id': 0, 'trader_cf': 1}},
         ]))[0]['trader_cf']
         return cf
 
     def get_latest_bank_cf(self):
         cf = list(self.collection.aggregate([
+            {'$match': {'bank_cf': {'$exists': True}}},
+            {'$project': {'_id': 0, 'bank_cf': 1, 'date': 1}},
             {'$sort': {'date': -1}},
             {'$limit': 1},
-            {'$project': {'_id': 0, 'bank_cf': 1}},
         ]))[0]['bank_cf']
         return cf
 
@@ -189,6 +241,7 @@ class _HistoryData:
                           'Profit_%': '$profit.percentage',
                           'Profit_ILS': '$profit.ILS',
                           'Bank_CF': '$bank_cf', 'Trader_CF': '$trader_cf', 'Date': '$date',
+                          'Foreign_Currencies': '$foreign_currencies'
                           }},
             {'$sort': {'Date': -1}}
         ]))
@@ -206,9 +259,15 @@ class _HistoryData:
 
     def update_all(self, total_assets_ils: float, total_assets_usd: float, total_profit: tuple):
         d = list(self.collection.aggregate([
+            {'$match': {'bank_cf': {'$exists': True}, 'trader_cf': {'$exists': True}}},
             {'$project': {'trader_cf': 1, 'bank_cf': 1, 'date': 1}},
             {'$sort': {'date': -1}},
             {'$limit': 1},
+            {'$lookup': {
+                'from': 'foreign_currencies',
+                'pipeline': [{'$group': {'_id': None, 'sum': {'$sum': '$Market_Value_ILS'}}}],
+                'as': 'Foreign_Currencies'
+            }},
             {'$lookup': {
                 'from': 'stocks',
                 'pipeline': [{'$group': {'_id': None, 'sum': {'$sum': '$Profit_ILS'}}}],
@@ -224,7 +283,8 @@ class _HistoryData:
                 'pipeline': [{'$group': {'_id': None, 'sum': {'$sum': '$Market_Value_ILS'}}}],
                 'as': 'Market_Value_ILS'
             }},
-            {'$project': {'_id': 0, 'Total_Profit_ILS': '$Profit_ILS.sum',
+            {'$project': {'_id': 0, 'Foreign_Currencies': '$Foreign_Currencies.sum',
+                          'Total_Profit_ILS': '$Profit_ILS.sum',
                           'Total_Market_Value_ILS': '$Market_Value_ILS.sum',
                           'Total_Market_Value_USD': '$Market_Value_USD.sum', 'trader_cf': 1, 'bank_cf': 1}},
         ]))[0]
@@ -246,7 +306,9 @@ class _HistoryData:
                                    {'$set': {'trader_cf': d["trader_cf"], 'bank_cf': d["bank_cf"],
                                              'market_value': {'portfolio': portfolio_market_value,
                                                               'total_assets': total_assets},
-                                             'profit': profit}},
+                                             'profit': profit,
+                                             'foreign_currencies': d['Foreign_Currencies'][0]
+                                             }},
                                    upsert=True)
         return True
 

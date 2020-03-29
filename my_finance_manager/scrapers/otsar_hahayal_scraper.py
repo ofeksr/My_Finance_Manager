@@ -2,10 +2,10 @@
 Scrap bank account info from Otsar Hahayal website using selenium chrome web driver.
 """
 
-import json
 import logging
 import os
 import sys
+from pprint import pprint
 
 import keyring
 from selenium import webdriver
@@ -15,13 +15,12 @@ from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support import expected_conditions as ec
 from selenium.webdriver.support.ui import WebDriverWait
 
-
 if not os.path.isdir('logs'):
     os.mkdir('logs')
 LOG = logging.getLogger('Bank.Scraper.Logger')
 handler = logging.StreamHandler(sys.stdout)
 LOG.addHandler(handler)
-logging.basicConfig(filename='logs/Bank_Scraper_Logger.log', filemode='w',
+logging.basicConfig(filename='../logs/Bank_Scraper_Logger.log', filemode='w',
                     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', datefmt='%d/%m/%y %H:%M:%S',
                     level=logging.INFO)
 
@@ -29,10 +28,10 @@ logging.basicConfig(filename='logs/Bank_Scraper_Logger.log', filemode='w',
 charge = 0
 
 
-def get_bank_info(only_balance: bool = False) -> dict or None:
+def get_bank_info(mfm_output: bool = False):
     """
     Login to Otzar Hahayal account and scrapping user data.
-    :param only_balance: True or False.
+    :param mfm_output: True or False.
     :return: dict
     """
     global charge
@@ -78,7 +77,7 @@ def get_bank_info(only_balance: bool = False) -> dict or None:
 
         greens = driver.find_elements_by_class_name('current_balance.txt_green')
         current = greens[0].text.replace(',', '').split()[1]
-        currency = greens[1].text.replace(',', '').split()[1]
+        usd_value = greens[1].text.replace(',', '').split()[1]
         total = greens[2].text.replace(',', '').split()[1]
 
         # check if there is a charge on account.
@@ -92,8 +91,8 @@ def get_bank_info(only_balance: bool = False) -> dict or None:
             driver.quit()
             LOG.debug('Web driver closed')
 
-        if only_balance:
-            return float(balance)
+        if mfm_output:
+            return [float(current) + float(charge), float(usd_value)]
 
         else:
             return {
@@ -102,17 +101,17 @@ def get_bank_info(only_balance: bool = False) -> dict or None:
                 'Date': date,
                 'Time': time,
                 'Current Amount': f'{float(current):,}',
-                'Foreign Currency': f'{float(currency):,}',
+                'Foreign Currency': f'{float(usd_value):,}',
                 'Total Current Account': f'{float(total):,}',
                 'Charged Amount': f'{float(charge):,}',
                 'Total Balance': f'{float(balance):,}',
             }
 
     except:
-        LOG.exception(f'Failed to get info from Otsar Haayal website')
-        return None
+        LOG.exception('Failed to get info from Otsar Haayal website')
+        return [None]*2
 
 
 if __name__ == '__main__':
-    # using json.dumps for pretty print.
-    print(json.dumps(get_bank_info(), indent=4))
+    # keyring.set_password()  # TODO for setting up new password
+    pprint(get_bank_info())

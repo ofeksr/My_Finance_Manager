@@ -24,39 +24,37 @@ def run_script():
 
         with concurrent.futures.ThreadPoolExecutor() as executor:
             executor.submit(p.update_stocks_price)
-            f1 = executor.submit(get_bank_info, only_balance=True)
-            f2 = executor.submit(get_trader_info, cash_days=True)
+            f1 = executor.submit(get_bank_info, mfm_output=True)
+            f2 = executor.submit(get_trader_info, mfm_output=True)
 
-            bank_cf = f1.result()
-            trader_cf, p.days_left = f2.result()
+            bank_cf, bank_usd_val = f1.result()
+            trader_cf, p.days_left, trader_usd_val = f2.result()
 
         # in case that script couldn't web scrap for bank and \ or trader data.
-        if bank_cf is None and trader_cf is not None:
+        if trader_cf:
             p.update_bank_trader_cf(u_trader_cf=trader_cf)
+            p.update_bank_trader_foreign_currency('USD', u_trader_usd_val=trader_usd_val)
 
-        elif bank_cf is not None and trader_cf is None:
+            # check if need to alert (add to google keep `to do list`) to change trader password.
+            if trader_cf < 50 or p.days_left < 7:
+                keep = GoogleKeepAgent()
+                keep.login(email_address=email_address, password=keep_password, token=token)
+                events_to_add = []
+
+                if trader_cf < 50:
+                    events_to_add.append(f'Balance in trader is: {trader_cf},'
+                                         f' consider adding cash to trader balance.')
+
+                if p.days_left < 7:
+                    events_to_add.append(f'Days left for changing Meitav Dash password: {p.days_left}.')
+
+                keep.add_events_to_list(list_id=to_do_list_id, events=events_to_add, top=True)
+
+        if bank_cf:
             p.update_bank_trader_cf(u_bank_cf=bank_cf)
-
-        else:
-            p.update_bank_trader_cf(u_bank_cf=bank_cf, u_trader_cf=trader_cf)
+            p.update_bank_trader_foreign_currency('USD', u_bank_usd_val=bank_usd_val)
 
         p.update_history_data()
-
-        # check if need to alert (add to google keep `to do list`) to change trader password.
-        # if trader_cf is not None and p.days_left is not None:
-        if (trader_cf and p.days_left) and (trader_cf < 50 or p.days_left < 8):
-            keep = GoogleKeepAgent()
-            keep.login(email_address=email_address, password=keep_password, token=token)
-            events_to_add = []
-
-            if trader_cf < 50:
-                events_to_add.append(f'Balance in trader is: {trader_cf},'
-                                     f' consider adding cash to trader balance.')
-
-            if p.days_left < 8:
-                events_to_add.append(f'Days left for changing Meitav Dash password: {p.days_left}.')
-
-            keep.add_events_to_list(list_id=to_do_list_id, events=events_to_add, top=True)
 
         p.graph(market_value=True, save_only=True)
         p.graph(profit_numbers=True, save_only=True)
@@ -67,6 +65,7 @@ def run_script():
             receiver_email = p.db.user_info.get_user_email_address()
             p.send_fancy_email(receiver_email=receiver_email)
 
+        # close db connection and backup it
         p.db.close_connection()
 
         backup_path = f'C:/Users/{os.getlogin()}/PycharmProjects/Backup Databases/MFM/MongoDB/{p.TODAY}'
@@ -75,7 +74,6 @@ def run_script():
         p.db.backup_database(path=backup_path)
 
         time.sleep(3.5)
-        return True
 
     except Exception:
         MyFinanceManager.LOG.exception('Script not fully finished, error file created')

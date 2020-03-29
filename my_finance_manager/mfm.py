@@ -33,6 +33,7 @@ class MyFinanceManager:
     TODAY = mongo_db.TODAY
     CR = CurrencyRates()
     CC = CurrencyCodes()
+
     graphs_save_path = 'media/graphs/'
     days_left = 0  # for changing Meitav Dash website password
 
@@ -59,7 +60,7 @@ class MyFinanceManager:
         return datetime.datetime.strptime(date_string, '%d/%m/%Y')
 
     @classmethod
-    def currency_converter(cls, i_have: str = None, i_want: str = None, amount: int or float = 0,
+    def currency_converter(cls, i_have: str = None, i_want: str = None, amount=.0,
                            symbol: str = None) -> float or str:
         """
 
@@ -211,10 +212,23 @@ class MyFinanceManager:
         else:
             for d in self.db.stocks.get_stock_lots_count(per_stock=True):
                 self._loop_update_stock(d['symbol'], d['count'])
-                self.LOG.info('All stocks prices updated')
+            self.LOG.info('All stocks prices updated')
 
         self.db.last_modified.update_field(field_name='stocks')
         return True
+
+    def update_bank_trader_foreign_currency(self, symbol: str,
+                                            u_bank_usd_val: float = None, u_trader_usd_val: float = None):
+        if u_trader_usd_val:
+            converted_trader_usd_val = self.currency_converter(symbol, 'ILS', u_trader_usd_val)
+            self.db.foreign_currencies.update_foreign_currency(symbol, 'Trader', converted_trader_usd_val,
+                                                               u_trader_usd_val)
+            self.LOG.info('Trader Foreign Currency updated')
+
+        elif u_bank_usd_val:
+            converted_bank_usd_val = self.currency_converter('ILS', symbol, u_bank_usd_val)
+            self.db.foreign_currencies.update_foreign_currency(symbol, 'Bank', u_bank_usd_val, converted_bank_usd_val)
+            self.LOG.info('Bank Foreign Currency updated')
 
     def update_bank_trader_cf(self, u_bank_cf: float = None, u_trader_cf: float = None) -> bool:
         if u_bank_cf:
@@ -233,6 +247,7 @@ class MyFinanceManager:
         total_profit = self.total_profit(numbers_only=True)
         total_assets_ils = self.total_assets()
         total_assets_usd = self.total_assets(in_usd=True)
+
         self.db.history_data.update_all(
             total_profit=total_profit, total_assets_ils=total_assets_ils,
             total_assets_usd=total_assets_usd
@@ -332,12 +347,21 @@ class MyFinanceManager:
 
     def df_stocks(self, to_email: bool = False):
         data = self.db.stocks.fetch_data_for_df()
+        data.extend(self.db.foreign_currencies.fetch_data_for_df())
         df = pd.DataFrame(data=[d for d in data])
-        df = df.reindex(columns=['Symbol', 'Lot_Num', 'Date', 'Amount', 'Buy_Price', 'Currency',
+        df = df.reindex(columns=['Symbol', 'Lot', 'Date', 'Amount', 'Buy_Price', 'Currency',
                                  'Market_Value_ILS', 'Profit_ILS', 'Profit_%'])
+        df.sort_values(by=['Market_Value_ILS'], ascending=False, inplace=True)
+
         df.Date = df.Date.dt.strftime('%d-%m-%Y')
 
+        df = df.replace({'NaT': '-'})
+
+        df.Amount = df.Amount.fillna(0).astype(int)
+        df.Amount = df.Amount.replace({0: '-'})
+
         if to_email:
+            df.fillna('-', inplace=True)
             df = df.drop(columns=['Profit_ILS', 'Buy_Price'])
             tabulate.PRESERVE_WHITESPACE = True
             return tabulate(df, headers='keys', floatfmt=",.1f", tablefmt='html', numalign='center',
@@ -370,11 +394,13 @@ class MyFinanceManager:
     def df_history(self, tabulate_output: bool = False, to_email: bool = False):
         data = self.db.history_data.fetch_data_for_df()
         df = pd.DataFrame(data=[d for d in data])
-        df = df.reindex(columns=['Date', 'Portfolio_ILS', 'Portfolio_USD', 'Bank_CF', 'Trader_CF', 'Total_ILS',
-                                 'Total_USD', 'Profit_ILS', 'Profit_%'])
+        df = df.reindex(columns=['Date', 'Portfolio_ILS', 'Profit_ILS', 'Profit_%', 'Foreign_Currencies',
+                                 'Bank_CF', 'Trader_CF', 'Total_ILS', 'Total_USD'])
         df.Date = df.Date.dt.strftime('%d-%m-%Y')
+        df.Foreign_Currencies = df.Foreign_Currencies.round(2)
 
         if tabulate_output:
+            df.fillna('-', inplace=True)
             if to_email:  # last week stats only.
                 def day_name(s):
                     date_s = s.split('-')
@@ -382,7 +408,7 @@ class MyFinanceManager:
                     return date_i
 
                 df = df.iloc[:7]
-                df = df.drop(columns=['Portfolio_USD', 'Total_USD'])
+                df = df.drop(columns=['Total_USD'])
                 df.Date = df.Date.apply(lambda s: datetime.date(day=day_name(s)[0],
                                                                 month=day_name(s)[1],
                                                                 year=day_name(s)[2])
@@ -400,8 +426,8 @@ class MyFinanceManager:
     def total_assets(self, in_usd: bool = False) -> float:
         total_assets = self.db.stocks.sum_portfolio_field('Market_Value_ILS') \
                        + self.db.history_data.get_latest_bank_cf() \
-                       + self.db.history_data.get_latest_trader_cf()
-        # + self.total_profit(numbers_only=True)[1] \
+                       + self.db.history_data.get_latest_trader_cf() \
+                       + self.db.foreign_currencies.sum_foreign_currency_field('Market_Value_ILS') \
 
         if in_usd:
             return self.currency_converter('ILS', 'USD', total_assets)
@@ -412,11 +438,12 @@ class MyFinanceManager:
 
         profits = self.total_profit(numbers_only=True)
         total_assets = self.total_assets()
-
+        foreign_currencies = self.db.foreign_currencies.sum_foreign_currency_field('Market_Value_ILS')
         data = [
             f'{self.db.stocks.sum_portfolio_field("Market_Value_ILS"):,.2f}₪',
             f'{profits[1]:,.2f} ₪',
             f'{profits[0]:,.2f} %',
+            f'{foreign_currencies:,.2f} ₪',
             f'{self.db.history_data.get_latest_bank_cf():,.2f}₪',
             f'{self.db.history_data.get_latest_trader_cf():,.2f}₪',
             f'{total_assets:,.2f}₪',
@@ -426,6 +453,7 @@ class MyFinanceManager:
             'Portfolio Assets',
             'Profit ILS',
             'Profit %',
+            'Foreign Currencies',
             'Bank CF',
             'Trader CF',
             'Total Assets',
@@ -485,7 +513,7 @@ class MyFinanceManager:
 
         if profit_percentage:
             if len(df) > 0:
-                df_g = df.groupby(by=['Symbol']).mean()
+                df_g = df.dropna().groupby(by=['Symbol']).mean()
                 df_g_s = df_g.sort_values('Profit_%')
                 plt.style.use('ggplot')
                 df_g_s.plot.barh(y='Profit_%', legend=False, color=colors, figsize=(10, 5))
@@ -513,7 +541,7 @@ class MyFinanceManager:
 
         if profit_numbers:
             if len(df) > 0:
-                df_g = df.groupby(by='Symbol').sum()
+                df_g = df.dropna().groupby(by=['Symbol']).sum()
                 df_g_m = df_g.sort_values('Profit_ILS')
                 plt.style.use('ggplot')
                 df_g_m.plot.barh(y='Profit_ILS', legend=False, color=colors, figsize=(10, 5))
@@ -548,7 +576,7 @@ class MyFinanceManager:
                 f'<h3><br>{self.df_assets(to_email=True)}</h3>' \
                 f'</center>'
 
-        img = self.graph(market_value=True, save_only=True)
+        img = self.graph(profit_percentage=True, save_only=True)
 
         body2 = f'<br><center>' \
                 f'<h3><u>Portfolio History Stats</u></h3>' \
@@ -562,7 +590,7 @@ class MyFinanceManager:
 
         contents = [body1, yagmail.inline(img), body2, body3]
 
-        if self.days_left and (self.days_left < 5 and self.days_left != 0):
+        if self.days_left and (self.days_left < 7 and self.days_left != 0):
             body_0 = f'<br><center><h4><u>Warning:</u><br>' \
                      f'{self.days_left} to update login password in trader site.</h4></center><br>'
             contents.insert(0, body_0)
